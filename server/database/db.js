@@ -3,10 +3,7 @@
  * Establishes and manages the connection to MySQL database
  */
 
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: '../.env' });
+import mysql from "mysql2/promise";
 
 // Create a connection pool
 const pool = mysql.createPool({
@@ -21,11 +18,11 @@ const pool = mysql.createPool({
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
-    console.log('Database connection established successfully');
+    console.log("Database connection established successfully");
     connection.release();
     return true;
   } catch (error) {
-    console.error('Database connection failed:', error.message);
+    console.error("Database connection failed:", error.message);
     return false;
   }
 }
@@ -34,18 +31,12 @@ async function testConnection() {
 async function query(sql, params) {
   try {
     const [results] = await pool.execute(sql, params);
- 
+
     return results;
   } catch (error) {
-    console.error('Query error:', error.message);
+    console.error("Query error:", error.message);
     throw error;
   }
 }
 
-
-
-export {
-  pool,
-  query,
-  testConnection
-};
+export { pool, query, testConnection };

@@ -26,7 +26,7 @@ import {
   // Add new session management functions
   getUserSessions,
   revokeSession,
-  revokeAllOtherSessions
+  revokeAllOtherSessions,
 } from "../controller/authController.js";
 import { sendTwoFactorEmail } from "../utils/email.js";
 import {
@@ -47,10 +47,12 @@ import {
   otpRateLimit,
 } from "../middleware/rateLimit.js";
 
-import { generateAccessToken, generateOTP, generateRefreshToken } from "../utils/auth.js";
+import {
+  generateAccessToken,
+  generateOTP,
+  generateRefreshToken,
+} from "../utils/auth.js";
 import passport from "passport";
-
-
 
 // Get current authenticated user (for frontend)
 
@@ -68,7 +70,7 @@ router.post(
   registerRateLimit,
   verifyCsrf,
   registerValidation,
-  register
+  register,
 );
 router.post("/verify-email", otpRateLimit, otpValidation, verifyEmail);
 router.post("/resend-verification", otpRateLimit, resendVerification);
@@ -80,7 +82,7 @@ router.post(
   "/verify-2fa",
   twoFactorVerifyValidation,
   verifyCsrf,
-  verifyTwoFactor
+  verifyTwoFactor,
 );
 
 router.post("/refresh-token", refreshToken);
@@ -92,19 +94,19 @@ router.post(
   "/password-reset-request",
   otpRateLimit,
   passwordResetRequestValidation,
-  requestPasswordReset
+  requestPasswordReset,
 );
 router.post(
   "/verify-password-reset",
   otpRateLimit,
   otpValidation,
-  verifyPasswordResetOTP
+  verifyPasswordResetOTP,
 );
 router.post(
   "/reset-password",
   otpRateLimit,
   passwordUpdateValidation,
-  resetPassword
+  resetPassword,
 );
 
 // 2FA setup (requires authentication)
@@ -113,16 +115,21 @@ router.post(
   verifyToken,
   verifyCsrf,
   twoFactorSetupValidation,
-  setupTwoFactor
+  setupTwoFactor,
 );
 router.post(
   "/2fa/verify",
   verifyToken,
   verifyCsrf,
   twoFactorVerifyValidation,
-  verifyAndEnableTwoFactor
+  verifyAndEnableTwoFactor,
 );
-router.post("/2fa/disable-request", verifyToken, verifyCsrf, disableTwoFactorRequest);
+router.post(
+  "/2fa/disable-request",
+  verifyToken,
+  verifyCsrf,
+  disableTwoFactorRequest,
+);
 router.get("/2fa/disable", disableTwoFactor);
 
 // Session Management Routes (Protected)
@@ -135,7 +142,7 @@ router.delete("/sessions", verifyToken, revokeAllOtherSessions);
 // Google OAuth
 router.get(
   "/oauth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 router.get(
   "/oauth/google/callback",
@@ -148,14 +155,10 @@ router.get(
       // Store Google tokens if needed
       if (req.authInfo && req.authInfo.tokens) {
         req.session.oauthTokens = req.authInfo.tokens;
-
       }
 
       const accessToken = generateAccessToken(req.user);
       const refreshToken = generateRefreshToken(req.user);
-    
-
-     
 
       // Handle 2FA if enabled
       if (req.user.two_factor_enabled) {
@@ -165,28 +168,32 @@ router.get(
 
           await query(
             "INSERT INTO otps (user_id, email, otp, type, expires_at) VALUES (?, ?, ?, ?, ?)",
-            [req.user.id, req.user.email, otp, "two_factor", expiryTime]
+            [req.user.id, req.user.email, otp, "two_factor", expiryTime],
           );
 
           await sendTwoFactorEmail(req.user.email, otp);
         }
 
-        return res.redirect("/login?requiresTwoFactor=true&email=" + req.user.email + "&twoFactorMethod=" + req.user.two_factor_method + "&rememberMe=" + true);
+        return res.redirect(
+          "/login?requiresTwoFactor=true&email=" +
+            req.user.email +
+            "&twoFactorMethod=" +
+            req.user.two_factor_method +
+            "&rememberMe=" +
+            true,
+        );
       }
-
-
 
       // Create new session
       const deviceInfo = {
-        deviceType: 'browser',
-        browser: req.headers['user-agent'],
-        os: req.headers['sec-ch-ua-platform'] || 'unknown'
+        deviceType: "browser",
+        browser: req.headers["user-agent"],
+        os: req.headers["sec-ch-ua-platform"] || "unknown",
       };
 
       const sessionExpiry = new Date();
       sessionExpiry.setDate(sessionExpiry.getDate() + 7); // 7 days
 
-    
       await query(
         `INSERT INTO user_sessions (
           user_id, refresh_token, device_info, ip_address,
@@ -199,13 +206,9 @@ router.get(
           req.ip,
           sessionExpiry,
           true,
-          req.cookies?.SSID
-        ]
+          req.cookies?.SSID ?? null,
+        ],
       );
-      
-     
-   
-
 
       // Set cookies
       res.cookie("accessToken", accessToken, {
@@ -215,20 +218,18 @@ router.get(
         maxAge: 24 * 60 * 60 * 1000, // 1 day
       });
 
-
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "Strict",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
-   
+
       res.redirect("/user/dashboard");
     } catch (error) {
-    
       res.redirect("/login?error=oauth_failed");
     }
-  }
+  },
 );
 
 // (Optional) Route to get OAuth tokens for debugging/advanced use

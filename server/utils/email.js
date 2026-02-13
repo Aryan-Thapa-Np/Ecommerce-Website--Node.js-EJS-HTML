@@ -3,32 +3,38 @@
  * Handles sending emails for various purposes like OTP verification, password reset, etc.
  */
 
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
-  secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
+  secure: process.env.EMAIL_PORT === "465", // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
 // Verify transporter configuration
 const verifyEmailConfig = async () => {
   try {
     await transporter.verify();
-    console.log('Email service is ready');
+    console.log("Email service is ready");
     return true;
   } catch (error) {
-    console.error('Email service configuration error:', error);
+    console.error("Email service configuration error:", error);
     return false;
   }
 };
-
 
 const companyName = "Cartify";
 
@@ -38,7 +44,7 @@ const sendVerificationEmail = async (email, otp) => {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Verify Your Email Address',
+      subject: "Verify Your Email Address",
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; padding-bottom: 20px;">
@@ -58,13 +64,13 @@ const sendVerificationEmail = async (email, otp) => {
             <p style="color: #777; font-size: 12px; margin: 5px 0;">&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
           </div>
         </div>
-      `
+      `,
     };
-    
+
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error("Error sending verification email:", error);
     return false;
   }
 };
@@ -75,7 +81,7 @@ const sendPasswordResetEmail = async (email, otp) => {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Password Reset Request',
+      subject: "Password Reset Request",
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; padding-bottom: 20px;">
@@ -95,13 +101,13 @@ const sendPasswordResetEmail = async (email, otp) => {
             <p style="color: #777; font-size: 12px; margin: 5px 0;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
           </div>
         </div>
-      `
+      `,
     };
-    
+
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error("Error sending password reset email:", error);
     return false;
   }
 };
@@ -112,7 +118,7 @@ const sendTwoFactorEmail = async (email, otp) => {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Your Two-Factor Authentication Code',
+      subject: "Your Two-Factor Authentication Code",
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; padding-bottom: 20px;">
@@ -132,27 +138,25 @@ const sendTwoFactorEmail = async (email, otp) => {
             <p style="color: #777; font-size: 12px; margin: 5px 0;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
           </div>
         </div>
-      `
+      `,
     };
-    
+
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending 2FA email:', error);
+    console.error("Error sending 2FA email:", error);
     return false;
   }
 };
 
-
-
 //2fa-disable req
 
-const sendTwoFactorDisable = async (email, token,userId) => {
+const sendTwoFactorDisable = async (email, token, userId) => {
   try {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Two-Factor Authentication Disable Request',
+      subject: "Two-Factor Authentication Disable Request",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #333;">Two-Factor Authentication Disable Request</h2>
@@ -166,49 +170,54 @@ const sendTwoFactorDisable = async (email, token,userId) => {
             This is an automated message, please do not reply to this email.
           </p>
         </div>
-      `
+      `,
     };
-    
+
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending 2FA disable request email:', error);
+    console.error("Error sending 2FA disable request email:", error);
     return false;
   }
 };
 
 // Send account status change notification
-const sendAccountStatusEmail = async (email, status, reason, expiryDate = null) => {
+const sendAccountStatusEmail = async (
+  email,
+  status,
+  reason,
+  expiryDate = null,
+) => {
   try {
     let subject, message;
-    
+
     switch (status) {
-      case 'locked':
-        subject = 'Account Locked';
+      case "locked":
+        subject = "Account Locked";
         message = `
           <p>Your account has been temporarily locked due to multiple failed login attempts.</p>
           <p>You can try logging in again after 30 minutes.</p>
         `;
         break;
-      case 'banned':
-        subject = 'Account Banned';
+      case "banned":
+        subject = "Account Banned";
         message = `
           <p>Your account has been banned.</p>
-          <p>Reason: ${reason || 'Violation of terms of service'}</p>
+          <p>Reason: ${reason || "Violation of terms of service"}</p>
           <p>If you believe this is an error, please contact support.</p>
         `;
         break;
-      case 'suspended':
-        subject = 'Account Suspended';
+      case "suspended":
+        subject = "Account Suspended";
         message = `
           <p>Your account has been temporarily suspended.</p>
-          <p>Reason: ${reason || 'Violation of terms of service'}</p>
+          <p>Reason: ${reason || "Violation of terms of service"}</p>
           <p>Your account will be reactivated on: ${new Date(expiryDate).toLocaleDateString()}</p>
           <p>If you believe this is an error, please contact support.</p>
         `;
         break;
-      case 'active':
-        subject = 'Account Reactivated';
+      case "active":
+        subject = "Account Reactivated";
         message = `
           <p>Your account has been reactivated and is now in good standing.</p>
           <p>You can now log in and use all features of your account.</p>
@@ -217,7 +226,7 @@ const sendAccountStatusEmail = async (email, status, reason, expiryDate = null) 
       default:
         return false;
     }
-    
+
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
@@ -230,25 +239,31 @@ const sendAccountStatusEmail = async (email, status, reason, expiryDate = null) 
             This is an automated message, please do not reply to this email.
           </p>
         </div>
-      `
+      `,
     };
-    
+
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending account status email:', error);
+    console.error("Error sending account status email:", error);
     return false;
   }
 };
 
 // Send marketing email to subscribers or customers
-const sendMarketingEmail = async (recipients, subject, content, template = 'custom', unsubscribe_token) => {
+const sendMarketingEmail = async (
+  recipients,
+  subject,
+  content,
+  template = "custom",
+  unsubscribe_token,
+) => {
   try {
     // Determine email template based on the selected type
-    let htmlTemplate = '';
-    
+    let htmlTemplate = "";
+
     switch (template) {
-      case 'newsletter':
+      case "newsletter":
         htmlTemplate = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -264,8 +279,8 @@ const sendMarketingEmail = async (recipients, subject, content, template = 'cust
           </div>
         `;
         break;
-      
-      case 'promotion':
+
+      case "promotion":
         htmlTemplate = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px; background-color: #ff6b6b; padding: 15px; border-radius: 5px;">
@@ -284,8 +299,8 @@ const sendMarketingEmail = async (recipients, subject, content, template = 'cust
           </div>
         `;
         break;
-      
-      case 'announcement':
+
+      case "announcement":
         htmlTemplate = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px; background-color: #4dabf7; padding: 15px; border-radius: 5px;">
@@ -301,8 +316,8 @@ const sendMarketingEmail = async (recipients, subject, content, template = 'cust
           </div>
         `;
         break;
-      
-      case 'custom':
+
+      case "custom":
       default:
         htmlTemplate = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
@@ -314,23 +329,23 @@ const sendMarketingEmail = async (recipients, subject, content, template = 'cust
           </div>
         `;
     }
-    
+
     // If recipients is an array, join with commas
-    const to = Array.isArray(recipients) ? recipients.join(',') : recipients;
-    
+    const to = Array.isArray(recipients) ? recipients.join(",") : recipients;
+
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to,
       subject,
-      html: htmlTemplate
+      html: htmlTemplate,
     };
-    
+
     // Send email
     const result = await transporter.sendMail(mailOptions);
-   
+
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error('Error sending marketing email:', error);
+    console.error("Error sending marketing email:", error);
     return { success: false, error: error.message };
   }
 };

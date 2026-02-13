@@ -12,12 +12,12 @@ import { pushNotification } from "../utils/notification.js";
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-  
 
     // Check if user exists
-    const user = await query("SELECT id, password FROM users WHERE email = ?", [
-      email,
-    ]);
+    const user = await query(
+      "SELECT id, provider,provider_id FROM users WHERE email = ?",
+      [email],
+    );
 
     if (!user || user.length === 0) {
       return res.status(200).json({
@@ -26,10 +26,10 @@ const requestPasswordReset = async (req, res) => {
         message: "Invalid Email Address",
       });
     }
-    const userIddd = user[0].password;
 
+    const user_data = user[0];
 
-    if (!userIddd) {
+    if (user_data.provider == "google" || user_data.provider_id) {
       // User registered via OAuth and has not set a password
       return res.status(200).json({
         status: "error",
@@ -38,19 +38,18 @@ const requestPasswordReset = async (req, res) => {
       });
     }
 
-    const userId = user[0].id;
+    const userId = user_data.id;
 
-   
     // Generate OTP
     const otp = generateOTP();
     const expiryTime = new Date(
-      Date.now() + parseInt(process.env.OTP_EXPIRY || 600000)
+      Date.now() + parseInt(process.env.OTP_EXPIRY || 600000),
     ); // 10 minutes
 
     // Store OTP in database
     await query(
       "INSERT INTO otps (user_id, email, otp, type, expires_at) VALUES (?, ?, ?, ?, ?)",
-      [userId, email, otp, "password_reset", expiryTime]
+      [userId, email, otp, "password_reset", expiryTime],
     );
 
     // Send password reset email
@@ -61,7 +60,7 @@ const requestPasswordReset = async (req, res) => {
       userId,
       "password_reset_request",
       "Password reset requested",
-      req
+      req,
     );
 
     return res.status(200).json({
@@ -83,11 +82,10 @@ const verifyPasswordResetOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-
     // Check if OTP exists and is valid
     const otpRecord = await query(
       "SELECT * FROM otps WHERE email = ? AND otp = ? AND type = ? AND expires_at > NOW()",
-      [email, otp, "password_reset"]
+      [email, otp, "password_reset"],
     );
 
     if (!otpRecord || otpRecord.length === 0) {
@@ -120,7 +118,7 @@ const resetPassword = async (req, res) => {
     // Check if OTP exists and is valid
     const otpRecord = await query(
       "SELECT * FROM otps WHERE email = ? AND otp = ? AND type = ? AND expires_at > NOW()",
-      [email, otp, "password_reset"]
+      [email, otp, "password_reset"],
     );
 
     if (!otpRecord || otpRecord.length === 0) {
@@ -150,9 +148,13 @@ const resetPassword = async (req, res) => {
       userId,
       "password_reset_success",
       "Password reset successfully",
-      req
+      req,
     );
-    await pushNotification(userId, "password_reset", "Your password has been successfully reset");
+    await pushNotification(
+      userId,
+      "password_reset",
+      "Your password has been successfully reset",
+    );
 
     return res.status(200).json({
       success: true,

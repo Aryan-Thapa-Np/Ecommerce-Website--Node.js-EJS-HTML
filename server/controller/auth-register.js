@@ -26,27 +26,30 @@ const register = async (req, res) => {
       });
     }
 
-
     // Insert user into database with customer role (role_id = 3)
     const result = await query(
       "INSERT INTO users (username, email, password, role_id) VALUES (?, ?, ?, ?)",
-      [username, email, hashedPassword, 3]
+      [username, email, hashedPassword, 3],
     );
 
     const userId = result.insertId;
-    
-   
+
+    // Insert user_profiles into database with customer id
+    const user_profile = await query(
+      "INSERT INTO user_profiles (user_id,profile_image) VALUES (?,?)",
+      [userId, "/noice/placeholder.webp"],
+    );
 
     // Generate OTP for email verification
     const otp = generateOTP();
     const expiryTime = new Date(
-      Date.now() + parseInt(process.env.OTP_EXPIRY || 600000)
+      Date.now() + parseInt(process.env.OTP_EXPIRY || 600000),
     ); // 10 minutes
 
     // Store OTP in database
     await query(
       "INSERT INTO otps (user_id, email, otp, type, expires_at) VALUES (?, ?, ?, ?, ?)",
-      [userId, email, otp, "email_verification", expiryTime]
+      [userId, email, otp, "email_verification", expiryTime],
     );
 
     // Send verification email
@@ -57,7 +60,7 @@ const register = async (req, res) => {
       userId,
       "registration",
       "User registered successfully",
-      req
+      req,
     );
 
     return res.status(201).json({
@@ -67,9 +70,8 @@ const register = async (req, res) => {
       userId,
     });
   } catch (error) {
-   
     return res.status(200).json({
-      status:"error",
+      status: "error",
       success: false,
       message: "Error registering user",
     });

@@ -6,7 +6,10 @@
 import { query } from "../database/db.js";
 import { logAccountStatusChange, logProfileUpdate } from "../utils/logger.js";
 
-import { getUserNotifications, deleteOldNotifications } from "../utils/notification.js";
+import {
+  getUserNotifications,
+  deleteOldNotifications,
+} from "../utils/notification.js";
 
 import fs from "fs";
 import { sendVerificationEmail } from "../utils/email.js";
@@ -25,7 +28,7 @@ const getUserProfile = async (req, res) => {
   try {
     const userId = req.user;
 
-    let ordercheck =null
+    let ordercheck = null;
 
     // Get user data and profile
     const users = await query(
@@ -36,21 +39,22 @@ const getUserProfile = async (req, res) => {
        JOIN roles r ON u.role_id = r.id
        JOIN user_profiles p ON u.id = p.user_id
        WHERE u.id = ?`,
-      [userId]
+      [userId],
     );
+
+    // console.log("User info: ", users);
 
     const order = await query(
       `SELECT id from order_headers
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
 
-    if(order && order.length > 0){
+    if (order && order.length > 0) {
       ordercheck = true;
-    }else{
+    } else {
       ordercheck = false;
     }
-
 
     if (!users || users.length === 0) {
       return res.status(404).json({
@@ -86,9 +90,6 @@ const updateUserInfo = async (req, res) => {
     const userId = req.user;
     const { name, email } = req.body;
 
-    
-
-
     // Validate that at least one field is provided
     if (!name && !email) {
       return res.status(200).json({
@@ -110,11 +111,7 @@ const updateUserInfo = async (req, res) => {
     if (email) {
       const [data] = await query(`select * from users where id=?`, [userId]);
 
-
-
       if (data.provider !== null) {
-        
-
         return res.status(200).json({
           status: "error",
           success: false,
@@ -122,9 +119,9 @@ const updateUserInfo = async (req, res) => {
         });
       }
 
-
-
-      const [checkEmail] = await query(`SELECT * FROM users WHERE email = ?`, [email]);
+      const [checkEmail] = await query(`SELECT * FROM users WHERE email = ?`, [
+        email,
+      ]);
       if (checkEmail && checkEmail.length > 0) {
         return res.status(200).json({
           status: "error",
@@ -133,11 +130,9 @@ const updateUserInfo = async (req, res) => {
         });
       }
 
-
       updates.push("email = ?");
       params.push(email);
     }
-
 
     // Add userId to params for the WHERE clause
     params.push(userId);
@@ -148,10 +143,10 @@ const updateUserInfo = async (req, res) => {
     // Execute the update query
     await query(`UPDATE users SET ${setClause} WHERE id = ?`, params);
     if (email) {
-      await query(`UPDATE users SET email_verified=? WHERE id = ?`, [null, userId]);
-
-
-
+      await query(`UPDATE users SET email_verified=? WHERE id = ?`, [
+        null,
+        userId,
+      ]);
 
       await logLoginAttempt(email, false, "Email not verified", req);
 
@@ -161,7 +156,7 @@ const updateUserInfo = async (req, res) => {
       // Store OTP in database
       await query(
         "INSERT INTO otps (user_id, email, otp, type, expires_at) VALUES (?, ?, ?, ?, ?)",
-        [userId, email, otp, "Email_verification", expiryTime]
+        [userId, email, otp, "Email_verification", expiryTime],
       );
 
       await sendVerificationEmail(email, otp);
@@ -171,7 +166,7 @@ const updateUserInfo = async (req, res) => {
         message: "User information updated successfully",
         requireEmailVerification: true,
       });
-    };
+    }
     await logLoginAttempt(name, true, "Name changed", req);
     await pushNotification(userId, "profile", "Your profile has been updated");
 
@@ -179,7 +174,6 @@ const updateUserInfo = async (req, res) => {
       success: true,
       message: "User information updated successfully",
     });
-
   } catch (error) {
     console.error("Update user info error:", error);
     return res.status(200).json({
@@ -231,7 +225,7 @@ const updateUserProfile = async (req, res) => {
         country || null,
         postalCode || null,
         userId,
-      ]
+      ],
     );
 
     // Log profile update
@@ -259,7 +253,7 @@ const updateProfileImage = async (req, res) => {
     // Get current profile image path from DB
     const userProfile = await query(
       "SELECT profile_image FROM user_profiles WHERE user_id = ?",
-      [userId]
+      [userId],
     );
     if (userProfile && userProfile[0] && userProfile[0].profile_image) {
       const oldImagePath = userProfile[0].profile_image;
@@ -283,7 +277,7 @@ const updateProfileImage = async (req, res) => {
 
     await query(
       "UPDATE user_profiles SET profile_image = ? WHERE user_id = ?",
-      [req.fileInfo.path, userId]
+      [req.fileInfo.path.replace("public", ""), userId],
     );
 
     await logProfileUpdate(userId, "Profile image", req);
@@ -318,7 +312,7 @@ const getUserById = async (req, res) => {
        JOIN roles r ON u.role_id = r.id
        JOIN user_profiles p ON u.id = p.user_id
        WHERE u.id = ?`,
-      [userId]
+      [userId],
     );
 
     if (!users || users.length === 0) {
@@ -362,102 +356,125 @@ const getUserById = async (req, res) => {
 async function getUserActivity(req, res) {
   try {
     const userId = req.user;
-    if (!userId) { return res.status(200).json({ status: 'error', message: 'Invalid user ID' }); }
+    if (!userId) {
+      return res
+        .status(200)
+        .json({ status: "error", message: "Invalid user ID" });
+    }
     await deleteOldNotifications(userId);
     const notifications = await getUserNotifications(userId, 4);
     return res.json(notifications); // add return here
   } catch (error) {
-    console.error('Error fetching activity notifications:', error);
-    return res.status(200).json({ status: 'error', success: false, message: 'Failed to fetch notifications' });
+    console.error("Error fetching activity notifications:", error);
+    return res.status(200).json({
+      status: "error",
+      success: false,
+      message: "Failed to fetch notifications",
+    });
   }
 }
-
-
-
 
 const sendUserNotifications = async (req, res) => {
   try {
     const userID = req.user;
 
     if (!userID) {
-      return res.status(200).json({ status: 'error', message: 'Invalid user ID' });
-
+      return res
+        .status(200)
+        .json({ status: "error", message: "Invalid user ID" });
     }
-
 
     const notifications = await getUserNotifications(userID, 20);
 
     return res.json(notifications);
-
   } catch (error) {
-    console.error('Error fetching notifications:', error);
-    return res.status(200).json({ status: 'error', success: false, message: 'Failed to fetch notifications' });
+    console.error("Error fetching notifications:", error);
+    return res.status(200).json({
+      status: "error",
+      success: false,
+      message: "Failed to fetch notifications",
+    });
   }
-
 };
-
 
 const markNotificationAsViewed = async (req, res) => {
   try {
     const userId = req.user;
     const id = req.params.id;
-    if (!userId) return res.status(400).json({ status: 'error', message: 'Invalid user ID' });
+    if (!userId)
+      return res
+        .status(400)
+        .json({ status: "error", message: "Invalid user ID" });
 
     const result = await query(
-      'UPDATE notifications SET viewed = 1 WHERE user_id = ? AND id=? AND viewed = 0',
-      [userId, id]
+      "UPDATE notifications SET viewed = 1 WHERE user_id = ? AND id=? AND viewed = 0",
+      [userId, id],
     );
 
-    return res.json({ status: 'success', updated: result.affectedRows || 0 });
+    return res.json({ status: "success", updated: result.affectedRows || 0 });
   } catch (error) {
-    console.error('Error marking notifications as viewed:', error);
-    return res.status(200).json({ status: 'error', success: false, message: 'Failed to update notifications' });
+    console.error("Error marking notifications as viewed:", error);
+    return res.status(200).json({
+      status: "error",
+      success: false,
+      message: "Failed to update notifications",
+    });
   }
-}
-
-
+};
 
 const deleteNotification = async (req, res) => {
   try {
     const userID = req.user;
     if (!userID) {
-      return res.status(200).json({ status: 'error', message: 'Invalid user ID' });
+      return res
+        .status(200)
+        .json({ status: "error", message: "Invalid user ID" });
     }
     const id = req.params.id;
     if (!id) {
-      return res.status(200).json({ status: 'error', message: 'Invalid notification ID' });
+      return res
+        .status(200)
+        .json({ status: "error", message: "Invalid notification ID" });
     }
 
-  
     const result = await query(
-      'DELETE FROM notifications WHERE user_id = ? AND id=?',
-      [userID, id]
+      "DELETE FROM notifications WHERE user_id = ? AND id=?",
+      [userID, id],
     );
 
-    return res.json({ status: 'success', deleted: result.affectedRows || 0 });
-
-
+    return res.json({ status: "success", deleted: result.affectedRows || 0 });
   } catch (error) {
-    console.error('Error deleting notification:', error);
-    return res.status(200).json({ status: 'error', success: false, message: 'Failed to delete notification' });
+    console.error("Error deleting notification:", error);
+    return res.status(200).json({
+      status: "error",
+      success: false,
+      message: "Failed to delete notification",
+    });
   }
-}
+};
 
-const getusershortinfo = async(req,res)=>{
-  try{
+const getusershortinfo = async (req, res) => {
+  try {
     const userId = req.user;
-    
-    const user = await query("SELECT id, username FROM users WHERE id = ?", [userId]);
-    if(!user){
-      return res.status(200).json({ status: 'error',success: false, message: 'User not found' });
-    }
-    return res.json({ status: 'success', success: true, user: user });
-  }catch(error){
-    console.error('Error fetching user short info:', error);
-    return res.status(200).json({ status: 'error', success: false, message: 'Failed to fetch user short info' });
-  }
-}
 
+    const user = await query("SELECT id, username FROM users WHERE id = ?", [
+      userId,
+    ]);
+    if (!user) {
+      return res
+        .status(200)
+        .json({ status: "error", success: false, message: "User not found" });
+    }
+    return res.json({ status: "success", success: true, user: user });
+  } catch (error) {
+    console.error("Error fetching user short info:", error);
+    return res.status(200).json({
+      status: "error",
+      success: false,
+      message: "Failed to fetch user short info",
+    });
+  }
+};
 
 export {
   getUserProfile,

@@ -26,7 +26,12 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
     sans-serif;
   background-color: var(--gray-50);
   color: var(--gray-800);
@@ -848,7 +853,6 @@ body {
     left: 50%;
     transform: translateX(-50%);
   }
- 
 
   /* Ensure the menu doesn't overflow the viewport */
   .nav-item.dropdown {
@@ -2525,7 +2529,9 @@ body {
   text-decoration: none;
   color: inherit;
   height: 100%;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
 }
 
 .subscriptions-item,
